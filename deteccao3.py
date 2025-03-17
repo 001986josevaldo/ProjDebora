@@ -23,7 +23,7 @@ fps = 30  # Frames por segundo
 frame_size = (840, 472)  # Dimensão do vídeo
 
 # Criando o objeto VideoWriter
-out = cv2.VideoWriter(conflitosdetransito, fourcc, fps,frame_size)
+#out = cv2.VideoWriter(conflitosdetransito, fourcc, fps,frame_size)
 # -----------------------------------------------------------------------
 # Classes de veículos
 classNames = ["caminhao", "carro", "moto",]
@@ -57,6 +57,7 @@ tempo_anterior = None  # Inicializa o tempo anterior fora do loop principal
 while True:
     _, img = video.read()
     if img is None:
+        print("Erro: Não foi possível abrir o vídeo ou o vídeo chegou ao fim.")
         break
     
     # Redimensiona o frame
@@ -210,7 +211,7 @@ while True:
     
 
     # Escrever o frame no vídeo
-    out.write(img)
+#    out.write(img)
     #cvzone.putTextRect(img, str(f'Entrada A: - {len(contadorb)}'), (25, 50), scale=0.5, thickness=1)
     #img = redimensionar_frame(img)
     cv2.imshow('Conflitos de Trafego',img)
@@ -219,7 +220,7 @@ while True:
 
 # Fechar o vídeo e arquivo de texto
 video.release()
-out.release()
+#out.release()
 cv2.destroyAllWindows()
 
 
