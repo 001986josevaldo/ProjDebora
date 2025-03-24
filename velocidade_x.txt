@@ -1,0 +1,55 @@
+
+
+função para calcular a velocidade apenas do eixo x
+
+def calcular_velocidade(self, x2, y1, obj_id):
+        """
+        Calcula a velocidade do objeto baseado na posição x2 e retorna a velocidade em km/h.
+
+        Parâmetros:
+            x2 (int): Coordenada x do objeto detectado.
+            y1 (int): Coordenada y do objeto detectado.
+            id (int): ID do objeto.
+        
+
+        Retorna:
+            float ou None: Velocidade calculada em km/h, ou 0 se não puder ser calculada.
+        """
+        
+       
+        # Se o objeto ainda não foi registrado, inicializa seus dados
+        if obj_id not in self.dados_objetos:
+            self.dados_objetos[obj_id] = {"x2_anterior": x2, "tempo_anterior": time.time()}
+            print(f"Inicializando dados para ID {obj_id}")
+            return 0  # Retorna 0 na primeira vez
+
+        dados = self.dados_objetos[obj_id]
+        x2_anterior = dados["x2_anterior"]
+        tempo_anterior = dados["tempo_anterior"]
+
+        if x2 == x2_anterior:
+            return 0  # Retorna 0 se não houver movimento
+
+        # Calcula deslocamento e tempo decorrido
+        delta_x2 = x2 - x2_anterior
+        tempo_atual = time.time()
+        delta_tempo = tempo_atual - tempo_anterior
+
+        if delta_tempo <= 0.05:  # Evita cálculos com intervalos muito curtos
+            return 0
+
+        # Conversão de pixels para metros
+        fator_conversao = 5.12 / 53
+        velocidade_m_s = (delta_x2 * fator_conversao) / delta_tempo
+        velocidade_km_h = velocidade_m_s * 3.6
+
+        # Atualiza os dados do objeto
+        self.dados_objetos[obj_id] = {"x2_anterior": x2, "tempo_anterior": tempo_atual}
+
+        # Verifica se a velocidade está dentro de um intervalo razoável
+        if 1 <= velocidade_km_h <= 300:
+            vel = int(velocidade_km_h)
+            print(f"Velocidade do ID {obj_id}: {vel} Km/h")
+            return vel  
+
+        return 0  # Retorna 0 se a velocidade estiver fora dos limites

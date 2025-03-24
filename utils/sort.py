@@ -245,7 +245,7 @@ def associate_detections_to_trackers(detections, trackers, iou_threshold=0.3):
 
 
 class Sort(object):
-    def __init__(self, max_age=1, min_hits=3, iou_threshold=0.3):
+    def __init__(self, max_age=60, min_hits=1, iou_threshold=0.3):
         """
         Sets key parameters for SORT
         """
@@ -255,7 +255,7 @@ class Sort(object):
         self.trackers = []
         self.frame_count = 0
 
-    def update(self, dets=np.empty((0, 5))):
+    def update(self, dets=np.empty((0, 5))): # aqui
         """
         Params:
           dets - a numpy array of detections in the format [[x1,y1,x2,y2,score],[x1,y1,x2,y2,score],...]
@@ -266,14 +266,15 @@ class Sort(object):
         """
         self.frame_count += 1
         # get predicted locations from existing trackers.
-        trks = np.zeros((len(self.trackers), 5))
+        trks = np.zeros((len(self.trackers),5 )) # aqui  # Apenas para coordenadas e score
         to_del = []
         ret = []
         for t, trk in enumerate(trks):
             pos = self.trackers[t].predict()[0]
-            trk[:] = [pos[0], pos[1], pos[2], pos[3], 0]
+            trk[:] = [pos[0], pos[1], pos[2], pos[3], 0] # Atualiza apenas as coordenadas e score
             if np.any(np.isnan(pos)):
                 to_del.append(t)
+        # Remove trackers inválidos       
         trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
         for t in reversed(to_del):
             self.trackers.pop(t)
@@ -307,7 +308,78 @@ class Sort(object):
                 self.trackers.pop(i)
         if len(ret) > 0:
             return np.concatenate(ret)
-        return np.empty((0, 5))
+        return np.empty((0, 5)) # aqui
+
+    def update2(self, dets=np.empty((0, 6))):  # Alterado para aceitar mais colunas
+        """
+        Params:
+        dets - a numpy array of detections in the format [[x1,y1,x2,y2,score, ...],[x1,y1,x2,y2,score, ...],...]
+                Pode conter colunas adicionais além de x1, y1, x2, y2, score.
+        Requires: this method must be called once for each frame even with empty detections (use np.empty((0, 6)) for frames without detections).
+        Returns the a similar array, where the last column is the object ID, e as colunas adicionais são preservadas.
+
+        NOTE: The number of objects returned may differ from the number of detections provided.
+        """
+        self.frame_count += 1
+
+        # get predicted locations from existing trackers.
+        trks = np.zeros((len(self.trackers), 5))  # Apenas para coordenadas e score
+        to_del = []
+        ret = []
+
+        # Predict new locations for existing trackers
+        for t, trk in enumerate(trks):
+            pos = self.trackers[t].predict()[0]
+            trk[:] = [pos[0], pos[1], pos[2], pos[3], 0]  # Atualiza apenas as coordenadas e score
+            if np.any(np.isnan(pos)):
+                to_del.append(t)
+
+        # Remove trackers inválidos
+        trks = np.ma.compress_rows(np.ma.masked_invalid(trks))
+        for t in reversed(to_del):
+            self.trackers.pop(t)
+
+        # Associate detections to trackers
+        matched, unmatched_dets, unmatched_trks = associate_detections_to_trackers(dets[:, :5], trks, self.iou_threshold)
+
+        # Update matched trackers with assigned detections
+        for m in matched:
+            self.trackers[m[1]].update(dets[m[0], :5])  # Atualiza apenas as coordenadas e score
+
+        # Create and initialise new trackers for unmatched detections
+        for i in unmatched_dets:
+            trk = KalmanBoxTracker(dets[i, :5])  # Inicializa apenas com coordenadas e score
+            self.trackers.append(trk)
+
+        # Prepare the return array
+        i = len(self.trackers)
+        for trk in reversed(self.trackers):
+            d = trk.get_state()[0]
+            if (trk.time_since_update < 1) and (
+                trk.hit_streak >= self.min_hits
+                or self.frame_count <= self.min_hits
+            ):
+                # Adiciona o ID do tracker e preserva as colunas adicionais da detecção original
+                if len(matched) > 0:
+                    matched_idx = [m[0] for m in matched if m[1] == i - 1]
+                    if matched_idx:
+                        additional_cols = dets[matched_idx[0], 5:]  # Pega as colunas adicionais da detecção correspondente
+                        ret.append(np.concatenate((d, [trk.id + 1], additional_cols)).reshape(1, -1))
+                else:
+                    ret.append(np.concatenate((d, [trk.id + 1])).reshape(1, -1))
+            i -= 1
+
+            # Remove dead trackers
+            if trk.time_since_update > self.max_age:
+                self.trackers.pop(i)
+
+        # Retorna os resultados
+        if len(ret) > 0:
+            return np.concatenate(ret)
+        return np.empty((0, dets.shape[1] + 1))  # Retorna uma matriz vazia com o número correto de colunas
+
+
+
 
 
 def parse_args():
