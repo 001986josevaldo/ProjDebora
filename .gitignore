@@ -1,2 +1,14 @@
 /dataset/
 /videos/
+
+# Arquivos do Word
+*.doc
+*.docx
+~$*.doc*
+*.tmp
+
+# Outros padrões comuns
+.DS_Store
+.idea/
+*.log
+*.pyc
