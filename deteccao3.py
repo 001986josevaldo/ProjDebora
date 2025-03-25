@@ -78,6 +78,7 @@ tempo_entrada = None  # Armazena o tempo de entrada do último veículo
 ultimo_veiculo_id = None  # Armazena o último veículo que iniciou a contagem
 contador_tempo = 0    # Contador de tempo decorrido
 tempo_entrada_por_veiculo = {}  # Dicionário para armazenar tempos de entrada por obj_id
+
 while True:
     _, img = video.read()
     if img is None:
@@ -156,16 +157,15 @@ while True:
         # Exibir a contagem das classes            
     #print(detections)
     resultTracker = tracker.update2(detections)
-    
-        # Processa cada resultado
+    '''    
+    # Processa cada resultado
     for result in resultTracker:
-        contador.processar_deteccao(result)
-    
+        contador.processar_deteccao(result)    
     contador.contar_veiculos()
-
     # Obtém a contagem total de veículos
     contagem = contador.obter_contagem()
     print("Contagem total de veículos detectados:", contagem)
+    '''
     #print("")
     #print(resultTracker)
     tempo1 = time.time()
@@ -184,6 +184,11 @@ while True:
         x1, y1, x2, y2 = (int(x1)), int(y1), (int(x2)), int(y2)
         w, h = x2 - x1, y2 - y1 # Largura e altura do objeto
         cx,cy = x1+w//2, y1+h//2 # Centro do objeto
+
+            # Chama o método para verificar se cruzou a linha A ou B
+            # contagem dos veiculos por classes
+        if nomeObjeto is not None:  # Evita chamar o método se `nomeObjeto` for None
+            contadorEntradas.verificar_cruzamento_linha_id_obj(cx, cy, obj_id, nomeObjeto)
 
         # Chama o método para atualizar o tempo que o veículo passou na area de risco PET 
         monitor.atualizar_tempo_veiculo(obj_id, x1, y1, img, veiculo_na_area_risco)
@@ -218,19 +223,26 @@ while True:
 
 
 
-    detector_velocidade.contar_classes(ids, classes) # Conta os objetos detectados
+    #detector_velocidade.contar_classes(ids, classes) # Conta os objetos detectados
     coordenadas = [(cx,cy)]
-
+    '''
     # Loop para processar cada objeto
     for obj_id, classe, (cx, cy) in zip(ids, classes, coordenadas):
         # Verificar cruzamentos
         contadorEntradas.verificar_cruzamento_linhaA(cx, cy, obj_id)
         contadorEntradas.verificar_cruzamento_linhaB(cx, cy, obj_id)
-
+        '''
         # Exibir informações
         #print(f"Classe: {classe} | ID: {obj_id} | Total: {len(contadorEntradas.get_contadorA()) + len(contadorEntradas.get_contadorB())}")
 
-# Liberar a captura de vídeo    
+    # Exibe a contagem total de veículos
+    total = len(contadorEntradas.get_contadorA())+ len(contadorEntradas.get_contadorB())
+    
+    print(f"\nTotal Aprox. Veiculos: {total}")
+    # Exibe a contagem final
+    print("\nContagem final Aprox. de veículos:", contadorEntradas.obter_contagem_final(),"\n")
+    
+    # Liberar a captura de vídeo    
         # -------------------------------------------------------------------------------------------------\
     if cv2.waitKey(1) == 27:
         break
@@ -240,11 +252,20 @@ while True:
     cv2.putText(img, f"Area de risco (PET): {contagem_veiculos}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 1)
     cv2.putText(img, f"Entrada A: {len(contadorEntradas.get_contadorA())}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
     cv2.putText(img, f"Entrada B: {len(contadorEntradas.get_contadorB())}", (10, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,127 , 255), 2)
+    
+     # Desenhar a linha A
+    cv2.line(img, (linhaA[0], linhaA[1]), (linhaA[2], linhaA[1]), (255, 0, 0), 2)
+
+    # Desenhar a linha B
+    cv2.line(img, (linhaB[1], linhaB[0]), (linhaB[1], linhaB[2]), (255, 0, 0), 2)
 
     # Escrever o frame no vídeo
     out.write(img)
     cv2.imshow('Conflitos de Trafego',img)
-    
+    # Salva a contagem final em um CSV
+    contadorEntradas.salvar_contagem_csv("contagem_veiculos.csv")
+
+
 # Fechar o vídeo e arquivo de texto
 video.release()
 out.release()

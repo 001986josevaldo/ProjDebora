@@ -12,3 +12,7 @@
 .idea/
 *.log
 *.pyc
+
+*.csv
+
+*.mp4
